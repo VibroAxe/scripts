@@ -1,0 +1,94 @@
+#!/bin/bash
+
+
+# filters the screen -ls output to show the sesssions
+sessions=`screen -ls | sed -ne 's/[[:space:]]//' -ne 's/\((Attached)\|(Detached)\)// p'`
+res=`echo "$sessions" | wc -w`
+screenap="/usr/bin/screen"
+if [[ "$res" == "0" ]]; then
+        echo "  No existing SCREEN session to reattach to..."
+	echo "  Press Enter for default session or"
+	echo -n "  Enter a Name for a new session :"
+	read session
+	if [[ "$session" == "" ]]; then
+		#Auto name session
+		if  [[ "$SSH_CONNECTION" == "" ]]; then
+			session="Local_Login"
+		else
+			session=`echo $SSH_CONNECTION | gawk '{ print $1 }' | tr '.' '-'`	
+		fi
+	fi
+	screen -S "$session"
+        exit
+elif [[ "$res" == "1" ]]; then
+	if [[ "$1" == "" ]]; then
+	 	echo "auto loading session in 3"
+	        sleep 1
+		echo "2"
+		sleep 1
+		echo "1"
+		sleep 1
+		session="1"	
+	fi
+fi
+if [ "$1" = "c" ]; then
+	session=""
+elif [ "$1" != "" ]; then
+	echo "auto loading session in 3"
+	sleep 1
+	echo "2"
+	sleep 1
+	echo "1"
+	sleep 1
+	session="$1"
+fi
+if [[ "$session" == "" ]]; then
+	echo ''
+	echo "  CURRENT SESSIONS"
+	echo "  ------------------------"
+	#screen -ls | sed -ne 's/[[:space:]]//' -ne 's/\((Attached)\|(Detached)\)// p' | cat -n
+	echo "$sessions" | cat -n
+	echo "  ------------------------"
+	echo ''
+
+	#prompt for the session to join
+	echo -n "  Reattach to session: "
+	read session
+fi
+
+if [[ "$session" == "" ]]; then
+        #Auto name session
+        if  [[ "$SSH_CONNECTION" == "" ]]; then
+                session="Local_Login"
+	else
+		session=`echo $SSH_CONNECTION | gawk '{ print $1 }' | tr '.' '-'`
+	fi
+fi
+
+
+#attach to specified session
+linenum=0
+name=`screen -ls | sed -ne 's/[[:space:]]//' -ne 's/\((Attached)\|(Detached)\)// p' |
+while read line
+do
+ let "linenum += 1"
+ line=\`echo "$line" | cut -d' ' -f1 - \`
+ if [[ "$linenum" -eq "$session" ]]; then
+        echo $line
+        break
+ fi
+ sessionname=\`echo "$line" | cut -d. -f2 - | cut -d' ' -f1 - \`
+ if [ \` echo "$sessionname" | tr "[:upper:]" "[:lower:]"\` = \`echo "$session" | tr "[:upper:]" "[:lower:]"\` ]; then
+ 	echo $line
+	break
+ fi
+done`
+echo $name
+name=`echo "$name" | cut -d' ' -f1 -`
+echo $name
+if [[ "$name" != "" ]]; then
+   $screenap -d -r "$name"
+else
+   $screenap -S "$session"
+fi
+
